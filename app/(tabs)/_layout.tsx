@@ -1,33 +1,42 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { isAdmin } = useAuth();
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+    <Tabs screenOptions={{ tabBarActiveTintColor: '#007AFF' }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          href: null
         }}
       />
+
       <Tabs.Screen
-        name="explore"
+        name="catalog"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Shop',
+          tabBarIcon: ({ color }) => <Ionicons name="cart-outline" size={24} color={color} />,
+        }}
+      />
+
+
+
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: 'My Orders',
+          tabBarIcon: ({ color }) => <Ionicons name="list-outline" size={24} color={color} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={24} color={color} />,
         }}
       />
     </Tabs>
