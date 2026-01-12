@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 
 type FeedbackType = 'success' | 'error';
 
@@ -27,7 +27,7 @@ export default function FeedbackOverlay({ visible, type, message, onFinish }: Fe
             const timer = setTimeout(() => {
                 scale.value = withTiming(0, { duration: 300 });
                 opacity.value = withTiming(0, { duration: 300 }, () => {
-                    if (onFinish) onFinish();
+                    if (onFinish) runOnJS(onFinish)();
                 });
             }, 2000);
 

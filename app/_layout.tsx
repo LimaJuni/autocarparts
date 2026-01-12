@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { ActivityIndicator, Platform, View } from "react-native";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { CartProvider } from "../contexts/CartContext";
+import { NotificationProvider } from "../contexts/NotificationContext";
 
 function RootLayoutNav() {
   const { session, isLoading } = useAuth();
@@ -67,9 +68,11 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <CartProvider>
-        <RootLayoutNav />
-      </CartProvider>
+      <NotificationProvider>
+        <CartProvider>
+          <RootLayoutNav />
+        </CartProvider>
+      </NotificationProvider>
     </AuthProvider>
   );
 }
