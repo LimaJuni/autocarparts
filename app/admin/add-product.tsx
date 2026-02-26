@@ -12,14 +12,15 @@ export default function AddProductScreen() {
     const isDark = colorScheme === 'dark';
 
     const theme = useMemo(() => ({
-        bg: isDark ? '#121212' : '#f8f9fa',
-        card: isDark ? '#1E1E1E' : '#ffffff',
-        text: isDark ? '#FFFFFF' : '#333333',
-        inputBg: isDark ? '#2C2C2C' : '#ffffff',
-        border: isDark ? '#333333' : '#ddd',
-        placeholder: isDark ? '#888' : '#999',
-        accent: '#007AFF'
-    }), [isDark]);
+        bg: '#8B0000',
+        card: '#a11212',
+        inputBg: '#6b0000',
+        text: '#FFFFFF',
+        subtext: '#FFCCCC',
+        accent: '#FFD700',
+        border: '#c13030',
+        placeholder: '#FFCCCC88'
+    }), []);
 
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
@@ -111,14 +112,14 @@ export default function AddProductScreen() {
 
     return (
         <ScrollView style={[styles.container, { backgroundColor: theme.bg }]}>
-            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-            <Text style={[styles.heading, { color: theme.text }]}>Add New Product</Text>
+            <StatusBar barStyle="light-content" />
+            <Text style={[styles.heading, { color: '#fff' }]}>Add New Product</Text>
 
             <View style={[styles.form, { backgroundColor: theme.card }]}>
                 <Text style={[styles.label, { color: theme.text }]}>Product Name</Text>
                 <TextInput
                     style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]}
-                    placeholder="e.g. Brake Caliper"
+                    placeholder=""
                     placeholderTextColor={theme.placeholder}
                     value={name}
                     onChangeText={setName}
@@ -127,7 +128,7 @@ export default function AddProductScreen() {
                 <Text style={[styles.label, { color: theme.text }]}>Price (FCFA)</Text>
                 <TextInput
                     style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border }]}
-                    placeholder="e.g. 25000"
+                    placeholder=""
                     placeholderTextColor={theme.placeholder}
                     value={price}
                     onChangeText={setPrice}
@@ -145,15 +146,15 @@ export default function AddProductScreen() {
                             ]}
                             onPress={() => setCategory(cat.id)}
                         >
-                            <Text style={{ color: category === cat.id ? '#fff' : theme.text }}>{cat.name}</Text>
+                            <Text style={{ color: category === cat.id ? '#8B0000' : theme.text, fontWeight: '700' }}>{cat.name}</Text>
                         </TouchableOpacity>
                     ))}
                 </View>
 
                 <Text style={[styles.label, { color: theme.text }]}>Description</Text>
                 <TextInput
-                    style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border, height: 80 }]}
-                    placeholder="Product details..."
+                    style={[styles.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.border, height: 100 }]}
+                    placeholder=""
                     placeholderTextColor={theme.placeholder}
                     value={description}
                     onChangeText={setDescription}
@@ -168,13 +169,13 @@ export default function AddProductScreen() {
                     disabled={uploading}
                 >
                     {uploading ? (
-                        <ActivityIndicator color={theme.text} />
+                        <ActivityIndicator color={theme.accent} />
                     ) : imageUrl ? (
                         <Image source={{ uri: imageUrl }} style={styles.previewImage} />
                     ) : (
                         <View style={{ alignItems: 'center' }}>
-                            <Ionicons name="camera-outline" size={32} color={theme.placeholder} />
-                            <Text style={{ color: theme.placeholder, marginTop: 8 }}>Tap to Upload Image</Text>
+                            <Ionicons name="cloud-upload-outline" size={40} color={theme.accent} />
+                            <Text style={{ color: theme.subtext, marginTop: 12, fontWeight: '600' }}>Upload Product Photo</Text>
                         </View>
                     )}
                 </TouchableOpacity>
@@ -184,8 +185,12 @@ export default function AddProductScreen() {
                     <TextInput value={imageUrl} onChangeText={setImageUrl} />
                 </View>
 
-                <TouchableOpacity style={styles.button} onPress={handleAddProduct} disabled={loading}>
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Publish Product</Text>}
+                <TouchableOpacity
+                    style={[styles.button, { backgroundColor: theme.accent }]}
+                    onPress={handleAddProduct}
+                    disabled={loading}
+                >
+                    {loading ? <ActivityIndicator color="#8B0000" /> : <Text style={styles.buttonText}>Publish Product</Text>}
                 </TouchableOpacity>
             </View>
         </ScrollView>
@@ -193,15 +198,15 @@ export default function AddProductScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 20 },
-    heading: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
-    form: { padding: 20, borderRadius: 12, elevation: 2 },
-    label: { fontSize: 14, fontWeight: '600', marginBottom: 8, marginTop: 12 },
-    input: { borderWidth: 1, borderRadius: 8, padding: 12, fontSize: 16 },
-    categoryContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-    button: { backgroundColor: '#007AFF', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 30 },
-    buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    uploadButton: { height: 200, borderWidth: 2, borderStyle: 'dashed', borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 8, overflow: 'hidden' },
+    container: { flex: 1, padding: 16 },
+    heading: { fontSize: 26, fontWeight: '900', marginBottom: 20, letterSpacing: -0.5 },
+    form: { padding: 20, borderRadius: 24, elevation: 4, borderWidth: 1, borderColor: '#c13030', marginBottom: 40 },
+    label: { fontSize: 12, fontWeight: '800', marginBottom: 8, marginTop: 16, textTransform: 'uppercase', letterSpacing: 1 },
+    input: { borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 16, fontWeight: '600' },
+    categoryContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+    chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 },
+    button: { padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 32, elevation: 6 },
+    buttonText: { color: '#8B0000', fontWeight: '900', fontSize: 17 },
+    uploadButton: { height: 220, borderWidth: 2, borderStyle: 'dashed', borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginTop: 8, overflow: 'hidden' },
     previewImage: { width: '100%', height: '100%', resizeMode: 'cover' }
 });

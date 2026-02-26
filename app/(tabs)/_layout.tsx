@@ -6,7 +6,19 @@ export default function TabLayout() {
   const { isAdmin } = useAuth();
 
   return (
-    <Tabs screenOptions={{ tabBarActiveTintColor: '#007AFF' }}>
+    <Tabs screenOptions={{
+      tabBarActiveTintColor: '#FFD700',
+      tabBarInactiveTintColor: '#FFCCCC',
+      tabBarStyle: {
+        backgroundColor: '#8B0000',
+        borderTopColor: '#c13030',
+        borderTopWidth: 1,
+      },
+      tabBarBackground: () => null,
+      headerStyle: { backgroundColor: '#8B0000' },
+      headerTintColor: '#fff',
+      headerShadowVisible: false,
+    }}>
       <Tabs.Screen
         name="index"
         options={{

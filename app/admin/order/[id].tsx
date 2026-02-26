@@ -17,14 +17,16 @@ export default function AdminOrderDetails() {
     const isDark = colorScheme === 'dark';
 
     const theme = useMemo(() => ({
-        bg: isDark ? '#121212' : '#f4f4f4',
-        card: isDark ? '#1E1E1E' : '#ffffff',
-        text: isDark ? '#FFFFFF' : '#333333',
-        subtext: isDark ? '#AAAAAA' : '#666666',
-        border: isDark ? '#333333' : '#eeeeee',
-        success: '#28a745',
-        danger: '#d32f2f',
-    }), [isDark]);
+        bg: '#8B0000',
+        card: '#a11212',
+        text: '#FFFFFF',
+        subtext: '#FFCCCC',
+        accent: '#FFD700',
+        border: '#c13030',
+        success: '#4caf50',
+        warning: '#ff9800',
+        danger: '#ff4444',
+    }), []);
 
     useEffect(() => {
         if (id) fetchOrderDetails();
@@ -43,18 +45,24 @@ export default function AdminOrderDetails() {
     }
 
     async function verifyPayment() {
-        Alert.alert('Verify Payment', 'Are you sure you have received the funds in the bank?', [
+        Alert.alert('Verify Payment', 'Approve this order and send to delivery dashboard?', [
             { text: 'Cancel', style: 'cancel' },
             {
-                text: 'Yes, Approve', onPress: async () => {
-                    setFeedback({ visible: true, type: 'success', message: 'Order Approved!' });
+                text: 'Approve & Dispatch', onPress: async () => {
+                    setFeedback({ visible: true, type: 'success', message: 'Order Dispatched!' });
                     if (payment) {
                         await supabase.from('payments').update({ status: 'verified' }).eq('id', payment.id);
                     }
-                    await supabase.from('orders').update({ status: 'approved' }).eq('id', order.id);
+                    // Auto-push to delivery by setting status to approved_for_delivery
+                    await supabase.from('orders').update({ status: 'approved_for_delivery' }).eq('id', order.id);
                 }
             }
         ]);
+    }
+
+    async function dispatchForDelivery() {
+        setFeedback({ visible: true, type: 'success', message: 'Sent to Deliveries!' });
+        await supabase.from('orders').update({ status: 'approved_for_delivery' }).eq('id', order.id);
     }
 
     async function rejectOrder() {
@@ -82,11 +90,16 @@ export default function AdminOrderDetails() {
                 message={feedback.message}
                 onFinish={() => router.back()}
             />
-            <View style={[styles.card, { backgroundColor: theme.card }]}>
-                <Text style={[styles.title, { color: theme.text }]}>Order #{order.id.substring(0, 8)}</Text>
-                <Text style={{ color: theme.text }}>Status: <Text style={{ fontWeight: 'bold' }}>{order.status.toUpperCase()}</Text></Text>
-                <Text style={{ color: theme.text }}>Date: {new Date(order.created_at).toLocaleString()}</Text>
-                <Text style={[styles.amount, { color: theme.danger }]}>Total: {order.total_amount.toLocaleString()} FCFA</Text>
+            <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
+                <Text style={[styles.title, { color: theme.accent }]}>Order #{order.id.substring(0, 8).toUpperCase()}</Text>
+                <View style={styles.statusRow}>
+                    <Text style={{ color: theme.text, fontSize: 14 }}>Status:</Text>
+                    <View style={styles.statusBadge}>
+                        <Text style={styles.statusText}>{order.status.replace(/_/g, ' ').toUpperCase()}</Text>
+                    </View>
+                </View>
+                <Text style={{ color: theme.subtext, fontSize: 12, marginTop: 4 }}>Date: {new Date(order.created_at).toLocaleString()}</Text>
+                <Text style={[styles.amount, { color: theme.text }]}>Total: <Text style={{ color: theme.accent }}>{order.total_amount?.toLocaleString()} FCFA</Text></Text>
             </View>
 
             <View style={[styles.card, { backgroundColor: theme.card }]}>
@@ -112,29 +125,46 @@ export default function AdminOrderDetails() {
                 )}
             </View>
 
-            {order.status === 'paid_waiting_verification' && (
-                <View style={styles.actionContainer}>
-                    <TouchableOpacity style={styles.approveButton} onPress={verifyPayment}>
-                        <Text style={styles.btnText}>Verify Payment & Approve</Text>
+            {/* Action Buttons */}
+            <View style={styles.actionContainer}>
+                {order.status === 'paid_waiting_verification' && (
+                    <>
+                        <TouchableOpacity style={[styles.btn, styles.approveButton]} onPress={verifyPayment}>
+                            <Text style={styles.btnText}>Verify & Dispatch for Delivery</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.btn, styles.rejectButton]} onPress={rejectOrder}>
+                            <Text style={styles.btnText}>Reject Order</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
+
+                {order.status === 'approved' && (
+                    <TouchableOpacity style={[styles.btn, styles.dispatchButton]} onPress={dispatchForDelivery}>
+                        <Text style={styles.btnText}>Push to Delivery Man Dashboard</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.rejectButton} onPress={rejectOrder}>
-                        <Text style={styles.btnText}>Reject</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
+                )}
+            </View>
         </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, padding: 16 },
-    card: { padding: 16, marginBottom: 16, borderRadius: 8, elevation: 1 },
-    title: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
-    amount: { fontSize: 20, fontWeight: 'bold', marginTop: 8 },
-    itemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-    txnId: { fontWeight: 'bold', fontSize: 16, marginVertical: 4 },
-    actionContainer: { marginTop: 20, gap: 10 },
-    approveButton: { backgroundColor: '#28a745', padding: 16, borderRadius: 8, alignItems: 'center' },
-    rejectButton: { backgroundColor: '#d32f2f', padding: 16, borderRadius: 8, alignItems: 'center' },
-    btnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+    card: { padding: 18, marginBottom: 16, borderRadius: 16, elevation: 2 },
+    title: { fontSize: 22, fontWeight: '900', marginBottom: 12 },
+
+    statusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 4 },
+    statusBadge: { backgroundColor: '#6b0000', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#c13030' },
+    statusText: { color: '#FFD700', fontSize: 11, fontWeight: '800' },
+
+    amount: { fontSize: 18, fontWeight: '800', marginTop: 12 },
+    itemRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10, backgroundColor: '#8B0000', padding: 10, borderRadius: 8 },
+    txnId: { fontWeight: '700', fontSize: 14, marginVertical: 6, backgroundColor: '#8B0000', padding: 8, borderRadius: 6 },
+
+    actionContainer: { marginTop: 10, gap: 12, paddingBottom: 40 },
+    btn: { padding: 18, borderRadius: 16, alignItems: 'center', elevation: 4 },
+    approveButton: { backgroundColor: '#4caf50' },
+    rejectButton: { backgroundColor: '#ff4444' },
+    dispatchButton: { backgroundColor: '#FFD700' },
+    btnText: { color: '#8B0000', fontWeight: '900', fontSize: 16 }
 });

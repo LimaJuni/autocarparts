@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
 import { supabase } from '../lib/supabase';
@@ -9,40 +10,47 @@ export default function CheckoutScreen() {
     const { items, totalAmount, clearCart } = useCart();
     const { user } = useAuth();
     const router = useRouter();
-    const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
 
     const theme = useMemo(() => ({
-        bg: isDark ? '#121212' : '#f8f9fa',
-        card: isDark ? '#1E1E1E' : '#ffffff',
-        text: isDark ? '#FFFFFF' : '#333333',
-        subtext: isDark ? '#AAAAAA' : '#666666',
-        border: isDark ? '#333333' : '#cccccc',
-        input: isDark ? '#2C2C2C' : '#ffffff',
-        accent: '#007AFF',
-        danger: '#d32f2f'
-    }), [isDark]);
+        bg: '#8B0000', card: '#a11212', deep: '#6b0000',
+        text: '#FFFFFF', subtext: '#FFCCCC', border: '#c13030', accent: '#FFD700',
+    }), []);
 
     const [shippingAddress, setShippingAddress] = useState('');
+    const [deliveryLat, setDeliveryLat] = useState<number | undefined>();
+    const [deliveryLng, setDeliveryLng] = useState<number | undefined>();
     const [transactionId, setTransactionId] = useState('');
     const [loading, setLoading] = useState(false);
 
+    const handleAddressSelect = (address: string, lat?: number, lng?: number) => {
+        setShippingAddress(address);
+        setDeliveryLat(lat);
+        setDeliveryLng(lng);
+    };
+
     async function placeOrder() {
-        if (!shippingAddress || !transactionId) {
-            Alert.alert('Missing Info', 'Please provide shipping address and bank transaction ID.');
+        if (!shippingAddress.trim() || !transactionId.trim()) {
+            Alert.alert('Missing Info', 'Please provide a delivery address and bank transaction ID.');
             return;
         }
 
         setLoading(true);
         try {
+            const orderPayload: any = {
+                user_id: user.id,
+                total_amount: totalAmount,
+                status: 'paid_waiting_verification',
+                shipping_address: shippingAddress,
+                total_items: items.reduce((sum, i) => sum + i.quantity, 0),
+            };
+
+            // Store coordinates if user selected from map (used by live tracking)
+            if (deliveryLat !== undefined) orderPayload.delivery_lat = deliveryLat;
+            if (deliveryLng !== undefined) orderPayload.delivery_lng = deliveryLng;
+
             const { data: orderData, error: orderError } = await supabase
                 .from('orders')
-                .insert({
-                    user_id: user.id,
-                    total_amount: totalAmount,
-                    status: 'paid_waiting_verification',
-                    shipping_address: shippingAddress
-                })
+                .insert(orderPayload)
                 .select()
                 .single();
 
@@ -52,37 +60,24 @@ export default function CheckoutScreen() {
                 order_id: orderData.id,
                 product_id: item.id,
                 quantity: item.quantity,
-                price_at_purchase: item.price
+                price_at_purchase: item.price,
             }));
-
-            const { error: itemsError } = await supabase
-                .from('order_items')
-                .insert(orderItems);
-
+            const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
             if (itemsError) throw itemsError;
 
-            const { error: paymentError } = await supabase
-                .from('payments')
-                .insert({
-                    order_id: orderData.id,
-                    user_id: user.id,
-                    amount: totalAmount,
-                    transaction_id: transactionId,
-                    status: 'pending',
-                    proof_image_url: null
-                });
-
+            const { error: paymentError } = await supabase.from('payments').insert({
+                order_id: orderData.id,
+                user_id: user.id,
+                amount: totalAmount,
+                transaction_id: transactionId,
+                status: 'pending',
+                proof_image_url: null,
+            });
             if (paymentError) throw paymentError;
 
-            Alert.alert('Success', 'Order placed! Waiting for manual payment verification.', [
-                {
-                    text: 'OK', onPress: () => {
-                        clearCart();
-                        router.replace('/(tabs)/orders');
-                    }
-                }
+            Alert.alert('✅ Order Placed!', 'Waiting for manual payment verification.', [
+                { text: 'OK', onPress: () => { clearCart(); router.replace('/(tabs)/orders'); } },
             ]);
-
         } catch (e: any) {
             Alert.alert('Error', e.message);
         } finally {
@@ -91,59 +86,105 @@ export default function CheckoutScreen() {
     }
 
     return (
-        <ScrollView style={[styles.container, { backgroundColor: theme.bg }]}>
-            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} contentContainerStyle={styles.content}>
+            <StatusBar barStyle="light-content" />
 
-            <View style={[styles.summary, { backgroundColor: theme.card }]}>
-                <Text style={[styles.title, { color: theme.text }]}>Order Summary</Text>
-                <Text style={{ color: theme.text }}>Items: {items.length}</Text>
-                <Text style={[styles.total, { color: theme.danger }]}>Total: {totalAmount.toLocaleString()} FCFA</Text>
+            {/* Order Summary */}
+            <View style={[styles.section, { backgroundColor: theme.card }]}>
+                <Text style={[styles.sectionTitle, { color: theme.accent }]}>Order Summary</Text>
+                {items.map(item => (
+                    <View key={item.id} style={[styles.itemRow, { borderBottomColor: theme.border }]}>
+                        <Text style={[styles.itemName, { color: theme.text }]} numberOfLines={1}>{item.name}</Text>
+                        <Text style={[styles.itemQty, { color: theme.subtext }]}>x{item.quantity}</Text>
+                        <Text style={[styles.itemPrice, { color: theme.accent }]}>{(item.price * item.quantity).toLocaleString()} FCFA</Text>
+                    </View>
+                ))}
+                <View style={styles.totalRow}>
+                    <Text style={[styles.totalLabel, { color: theme.text }]}>Total</Text>
+                    <Text style={[styles.totalValue, { color: theme.accent }]}>{totalAmount.toLocaleString()} FCFA</Text>
+                </View>
             </View>
 
-            <View style={[styles.form, { backgroundColor: theme.card }]}>
-                <Text style={[styles.label, { color: theme.text }]}>Shipping Address</Text>
-                <TextInput
-                    style={[styles.input, { backgroundColor: theme.input, borderColor: theme.border, color: theme.text, height: 80 }]}
-                    multiline
-                    placeholder="123 Street, City..."
-                    placeholderTextColor={theme.subtext}
+            {/* Delivery Address with Autocomplete */}
+            <View style={[styles.section, { backgroundColor: theme.card }]}>
+                <Text style={[styles.sectionTitle, { color: theme.accent }]}>Delivery Address</Text>
+                <Text style={[styles.fieldHint, { color: theme.subtext }]}>
+                    Start typing to search for your address on the map
+                </Text>
+                <AddressAutocomplete
                     value={shippingAddress}
-                    onChangeText={setShippingAddress}
+                    onChange={handleAddressSelect}
                 />
+                {deliveryLat !== undefined && (
+                    <View style={styles.pinConfirm}>
+                        <Text style={styles.pinConfirmText}>📍 Location pinned on map</Text>
+                    </View>
+                )}
+            </View>
 
-                <Text style={[styles.label, { color: theme.text }]}>Bank Transfer</Text>
-                <View style={[styles.bankInfo, { backgroundColor: isDark ? '#2C3E50' : '#e3f2fd' }]}>
-                    <Text style={{ fontWeight: 'bold', color: theme.text }}>Bank Name: AutoParts Bank</Text>
-                    <Text style={{ color: theme.text }}>Account: 123-456-7890</Text>
-                    <Text style={{ color: theme.text }}>Ref: {user?.id.substring(0, 8)}</Text>
+            {/* Bank Transfer */}
+            <View style={[styles.section, { backgroundColor: theme.card }]}>
+                <Text style={[styles.sectionTitle, { color: theme.accent }]}>Bank Transfer</Text>
+                <View style={[styles.bankBox, { backgroundColor: theme.deep, borderColor: theme.border }]}>
+                    <Text style={[styles.bankLine, { color: theme.text }]}>🏦 Bank: AutoParts Bank</Text>
+                    <Text style={[styles.bankLine, { color: theme.text }]}>💳 Account: 123-456-7890</Text>
+                    <Text style={[styles.bankLine, { color: theme.subtext }]}>📋 Ref: {user?.id.substring(0, 8).toUpperCase()}</Text>
                 </View>
-
-                <Text style={[styles.label, { color: theme.text }]}>Transaction ID (Proof)</Text>
+                <Text style={[styles.fieldLabel, { color: theme.subtext }]}>Transaction ID (Proof)</Text>
                 <TextInput
-                    style={[styles.input, { backgroundColor: theme.input, borderColor: theme.border, color: theme.text }]}
-                    placeholder="Enter Bank Transaction ID"
+                    style={[styles.input, { backgroundColor: theme.deep, borderColor: theme.border, color: theme.text }]}
+                    placeholder=""
                     placeholderTextColor={theme.subtext}
                     value={transactionId}
                     onChangeText={setTransactionId}
                 />
-
-                <TouchableOpacity style={styles.button} onPress={placeOrder} disabled={loading}>
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Confirm Payment & Place Order</Text>}
-                </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+                style={[styles.button, loading && { opacity: 0.7 }]}
+                onPress={placeOrder}
+                disabled={loading}
+                activeOpacity={0.85}
+            >
+                {loading
+                    ? <ActivityIndicator color="#8B0000" />
+                    : <Text style={styles.buttonText}>Confirm Payment & Place Order</Text>}
+            </TouchableOpacity>
         </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    summary: { padding: 20, marginBottom: 10 },
-    title: { fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
-    total: { fontSize: 18, fontWeight: 'bold', marginTop: 8 },
-    form: { padding: 20, flex: 1 },
-    label: { fontSize: 16, fontWeight: '600', marginBottom: 8, marginTop: 12 },
-    input: { borderWidth: 1, borderRadius: 8, padding: 12 },
-    bankInfo: { padding: 12, borderRadius: 8, marginBottom: 12 },
-    button: { backgroundColor: '#28a745', padding: 16, borderRadius: 8, alignItems: 'center', marginTop: 30 },
-    buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    content: { padding: 16, paddingBottom: 60 },
+
+    section: { borderRadius: 16, padding: 16, marginBottom: 16, elevation: 2 },
+    sectionTitle: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+    fieldHint: { fontSize: 12, marginBottom: 10 },
+    fieldLabel: { fontSize: 13, fontWeight: '600', marginBottom: 8, marginTop: 14 },
+
+    itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1 },
+    itemName: { flex: 1, fontSize: 14, fontWeight: '500' },
+    itemQty: { fontSize: 13, marginHorizontal: 8 },
+    itemPrice: { fontSize: 14, fontWeight: '700' },
+
+    totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingTop: 12 },
+    totalLabel: { fontSize: 17, fontWeight: '700' },
+    totalValue: { fontSize: 19, fontWeight: '900' },
+
+    pinConfirm: { flexDirection: 'row', alignItems: 'center', marginTop: 8, backgroundColor: '#4caf5022', borderRadius: 8, padding: 8 },
+    pinConfirmText: { color: '#4caf50', fontSize: 12, fontWeight: '600' },
+
+    input: { borderWidth: 1, borderRadius: 10, padding: 14, fontSize: 14 },
+
+    bankBox: { borderWidth: 1, borderRadius: 10, padding: 14, marginBottom: 4, gap: 6 },
+    bankLine: { fontSize: 14, fontWeight: '500' },
+
+    button: {
+        backgroundColor: '#FFD700',
+        padding: 18, borderRadius: 14,
+        alignItems: 'center', elevation: 6,
+        shadowColor: '#FFD700', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
+    },
+    buttonText: { color: '#8B0000', fontWeight: '800', fontSize: 16 },
 });

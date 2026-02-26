@@ -13,33 +13,44 @@ import { CartProvider } from "../contexts/CartContext";
 import { NotificationProvider } from "../contexts/NotificationContext";
 
 function RootLayoutNav() {
-  const { session, isLoading } = useAuth();
+  const { session, isLoading, profile } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const colorScheme = useColorScheme();
 
   useEffect(() => {
     if (Platform.OS === 'android') {
-      const bg = colorScheme === 'dark' ? '#121212' : '#ffffff';
-      const style = colorScheme === 'dark' ? 'light' : 'dark';
+      const bg = '#8B0000';
       NavigationBar.setBackgroundColorAsync(bg);
-      NavigationBar.setButtonStyleAsync(style);
+      NavigationBar.setButtonStyleAsync('light');
     }
-  }, [colorScheme]);
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === "(auth)";
+    // If we have a session but profile hasn't loaded yet, wait.
+    // This prevents routing before we know the user's role.
+    if (session && profile === null) return;
 
-    if (!session && !inAuthGroup) {
-      // Redirect to welcome if not authenticated
-      router.replace("/welcome");
-    } else if (session && inAuthGroup) {
-      // Redirect to home if authenticated
-      router.replace("/(tabs)");
+    const inAuthGroup = segments[0] === '(auth)';
+    const inDelivery = segments[0] === 'delivery';
+    const inWelcome = segments[0] === 'welcome';
+    const role = profile?.role;
+
+    if (!session && !inAuthGroup && !inWelcome) {
+      router.replace('/welcome');
+    } else if (session && (inAuthGroup || inWelcome)) {
+      // Profile is loaded — now route based on role
+      if (role === 'delivery') {
+        router.replace('/delivery/dashboard');
+      } else {
+        router.replace('/(tabs)');
+      }
+    } else if (session && role === 'delivery' && !inDelivery) {
+      router.replace('/delivery/dashboard');
     }
-  }, [session, isLoading, segments]);
+  }, [session, isLoading, segments, profile]);
 
   if (isLoading) {
     return (
@@ -56,11 +67,13 @@ function RootLayoutNav() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        <Stack.Screen name="cart" options={{ presentation: 'modal', title: 'My Cart', headerShown: true }} />
-        <Stack.Screen name="checkout" options={{ title: 'Checkout', headerShown: true }} />
+        <Stack.Screen name="cart" options={{ presentation: 'modal', title: 'My Cart', headerShown: true, headerStyle: { backgroundColor: '#8B0000' }, headerTintColor: '#fff' }} />
+        <Stack.Screen name="checkout" options={{ title: 'Checkout', headerShown: true, headerStyle: { backgroundColor: '#8B0000' }, headerTintColor: '#fff' }} />
         <Stack.Screen name="admin" options={{ headerShown: false }} />
+        <Stack.Screen name="delivery" options={{ headerShown: false }} />
+        <Stack.Screen name="order" options={{ headerShown: false }} />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style="light" backgroundColor="#8B0000" />
     </ThemeProvider>
   );
 }

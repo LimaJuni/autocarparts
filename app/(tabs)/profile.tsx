@@ -10,16 +10,16 @@ export default function ProfileScreen() {
   const isDark = colorScheme === 'dark';
 
   const theme = useMemo(() => ({
-    bg: isDark ? '#121212' : '#f4f4f4',
-    card: isDark ? '#1E1E1E' : '#ffffff',
-    text: isDark ? '#FFFFFF' : '#333333',
-    subtext: isDark ? '#AAAAAA' : '#666666',
-    border: isDark ? '#333333' : '#eeeeee',
-  }), [isDark]);
+    bg: '#8B0000',
+    card: '#a11212',
+    text: '#FFFFFF',
+    subtext: '#FFCCCC',
+    border: '#c13030',
+  }), []);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle="light-content" backgroundColor="#8B0000" />
 
       <View style={[styles.header, { backgroundColor: theme.card }]}>
         <View style={[styles.avatarPlaceholder, { backgroundColor: isDark ? '#333' : '#eee' }]}>

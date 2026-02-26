@@ -26,14 +26,14 @@ export default function CatalogScreen() {
   const isDark = colorScheme === 'dark';
 
   const theme = {
-    bg: isDark ? '#121212' : '#f8f9fa',
-    card: isDark ? '#1E1E1E' : '#ffffff',
-    text: isDark ? '#FFFFFF' : '#333333',
-    subtext: isDark ? '#AAAAAA' : '#666666',
-    border: isDark ? '#333333' : '#eeeeee',
-    input: isDark ? '#2C2C2C' : '#ffffff',
-    accent: '#007AFF',
-    danger: '#ff4444'
+    bg: '#8B0000',
+    card: '#a11212',
+    text: '#FFFFFF',
+    subtext: '#FFCCCC',
+    border: '#c13030',
+    input: '#6b0000',
+    accent: '#FFD700',
+    danger: '#ff6666'
   };
 
   useEffect(() => {
@@ -114,7 +114,7 @@ export default function CatalogScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle="light-content" backgroundColor="#8B0000" />
 
       {/* Fly Animation Layer */}
       {flyData.visible && (

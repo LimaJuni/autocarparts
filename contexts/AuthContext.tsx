@@ -17,6 +17,7 @@ interface AuthContextType {
     profile: UserProfile | null;
     isLoading: boolean;
     isAdmin: boolean;
+    isDeliveryMan: boolean;
     signOut: () => Promise<void>;
 }
 
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
     profile: null,
     isLoading: true,
     isAdmin: false,
+    isDeliveryMan: false,
     signOut: async () => { },
 });
 
@@ -55,16 +57,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return () => subscription.unsubscribe();
     }, []);
 
-    const fetchProfile = async (userId: string) => {
+    const fetchProfile = async (userId: string, retryCount = 0) => {
         try {
             const { data, error } = await supabase
                 .from('user_profiles')
                 .select('*')
                 .eq('id', userId)
-                .single();
+                .maybeSingle(); // returns null (not error) when 0 rows
 
             if (error) {
                 console.error('Error fetching profile:', error);
+            } else if (!data && retryCount < 3) {
+                // Profile not yet committed (signup race condition) — retry after delay
+                setTimeout(() => fetchProfile(userId, retryCount + 1), 800);
+                return;
             } else {
                 setProfile(data);
             }
@@ -80,9 +86,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const isAdmin = profile?.role === 'admin';
+    const isDeliveryMan = profile?.role === 'delivery';
 
     return (
-        <AuthContext.Provider value={{ session, user: session?.user ?? null, profile, isLoading, isAdmin, signOut }}>
+        <AuthContext.Provider value={{ session, user: session?.user ?? null, profile, isLoading, isAdmin, isDeliveryMan, signOut }}>
             {children}
         </AuthContext.Provider>
     );

@@ -1,24 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
-import { FlatList, Image, StatusBar, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { FlatList, Image, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import QuantitySelector from '../components/QuantitySelector';
 import { CartItem, useCart } from '../contexts/CartContext';
 
 export default function CartScreen() {
-    const { items, removeFromCart, totalAmount } = useCart();
+    const { items, removeFromCart, updateQuantity, totalAmount } = useCart();
     const router = useRouter();
-    const colorScheme = useColorScheme();
-    const isDark = colorScheme === 'dark';
 
     const theme = useMemo(() => ({
-        bg: isDark ? '#121212' : '#f8f9fa',
-        card: isDark ? '#1E1E1E' : '#ffffff',
-        text: isDark ? '#FFFFFF' : '#333333',
-        subtext: isDark ? '#AAAAAA' : '#666666',
-        border: isDark ? '#333333' : '#eeeeee',
-        accent: '#007AFF',
-        danger: '#ff4444'
-    }), [isDark]);
+        bg: '#8B0000',
+        card: '#a11212',
+        text: '#FFFFFF',
+        subtext: '#FFCCCC',
+        border: '#c13030',
+        accent: '#FFD700',
+        danger: '#ff6666'
+    }), []);
 
     if (items.length === 0) {
         return (
@@ -34,18 +33,28 @@ export default function CartScreen() {
             <Image source={{ uri: item.image_url || 'https://via.placeholder.com/100' }} style={styles.image} />
             <View style={styles.info}>
                 <Text style={[styles.name, { color: theme.text }]}>{item.name}</Text>
-                <Text style={[styles.details, { color: theme.subtext }]}>{item.price.toLocaleString()} FCFA x {item.quantity}</Text>
+                <Text style={[styles.details, { color: theme.subtext }]}>{item.price.toLocaleString()} FCFA each</Text>
                 <Text style={[styles.subtotal, { color: theme.accent }]}>{(item.price * item.quantity).toLocaleString()} FCFA</Text>
+
+                <View style={styles.quantityRow}>
+                    <QuantitySelector
+                        quantity={item.quantity}
+                        onIncrease={() => updateQuantity(item.id, item.quantity + 1)}
+                        onDecrease={() => updateQuantity(item.id, item.quantity - 1)}
+                        accentColor={theme.accent}
+                        textColor={theme.text}
+                    />
+                    <TouchableOpacity onPress={() => removeFromCart(item.id)} style={styles.deleteBtn}>
+                        <Ionicons name="trash-outline" size={20} color={theme.danger} />
+                    </TouchableOpacity>
+                </View>
             </View>
-            <TouchableOpacity onPress={() => removeFromCart(item.id)}>
-                <Ionicons name="trash-outline" size={24} color={theme.danger} />
-            </TouchableOpacity>
         </View>
     );
 
     return (
         <View style={[styles.container, { backgroundColor: theme.bg }]}>
-            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+            <StatusBar barStyle="light-content" />
             <FlatList
                 data={items}
                 renderItem={renderItem}
@@ -55,10 +64,10 @@ export default function CartScreen() {
             <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
                 <View style={styles.totalRow}>
                     <Text style={[styles.totalLabel, { color: theme.text }]}>Total:</Text>
-                    <Text style={[styles.totalValue, { color: theme.danger }]}>{totalAmount.toLocaleString()} FCFA</Text>
+                    <Text style={[styles.totalValue, { color: theme.accent }]}>{totalAmount.toLocaleString()} FCFA</Text>
                 </View>
-                <TouchableOpacity style={styles.checkoutButton} onPress={() => router.push('/checkout')}>
-                    <Text style={styles.checkoutText}>Proceed to Checkout</Text>
+                <TouchableOpacity style={[styles.checkoutButton, { backgroundColor: theme.accent }]} onPress={() => router.push('/checkout')}>
+                    <Text style={[styles.checkoutText, { color: '#8B0000' }]}>Proceed to Checkout</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -70,16 +79,18 @@ const styles = StyleSheet.create({
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyText: { marginTop: 16, fontSize: 18 },
     list: { padding: 16 },
-    itemContainer: { flexDirection: 'row', padding: 12, borderRadius: 12, marginBottom: 12, alignItems: 'center', elevation: 2 },
-    image: { width: 60, height: 60, borderRadius: 8, marginRight: 12 },
+    itemContainer: { flexDirection: 'row', padding: 12, borderRadius: 16, marginBottom: 12, alignItems: 'flex-start', elevation: 3 },
+    image: { width: 70, height: 70, borderRadius: 10, marginRight: 12 },
     info: { flex: 1 },
-    name: { fontWeight: '600', fontSize: 16 },
-    details: { marginTop: 4 },
-    subtotal: { fontWeight: 'bold', marginTop: 4 },
+    name: { fontWeight: '700', fontSize: 15 },
+    details: { marginTop: 2, fontSize: 13 },
+    subtotal: { fontWeight: 'bold', marginTop: 2, fontSize: 14 },
+    quantityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+    deleteBtn: { padding: 4 },
     footer: { padding: 20, borderTopWidth: 1, elevation: 10 },
     totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
     totalLabel: { fontSize: 18, fontWeight: '600' },
     totalValue: { fontSize: 20, fontWeight: 'bold' },
-    checkoutButton: { backgroundColor: '#007AFF', padding: 16, borderRadius: 12, alignItems: 'center' },
-    checkoutText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    checkoutButton: { padding: 16, borderRadius: 12, alignItems: 'center' },
+    checkoutText: { fontWeight: 'bold', fontSize: 16 },
 });
