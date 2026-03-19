@@ -14,12 +14,30 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 
+// Helper for formatting
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
+};
+
 export default function DeliveryDashboard() {
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState<'available' | 'active'>('available');
     const { profile, user, signOut } = useAuth();
     const router = useRouter();
+
+    // Original App Theme with SaaS structure
+    const theme = {
+        bg: '#8B0000',
+        headerBg: '#6b0000',
+        card: '#a11212',
+        text: '#FFFFFF',
+        subtext: '#FFCCCC',
+        primary: '#FFD700', // Gold is primary action color on red background
+        accent: '#FFD700',
+        border: '#c13030',
+        routeLine: '#FFCCCC',
+    };
 
     useEffect(() => {
         fetchOrders();
@@ -79,98 +97,115 @@ export default function DeliveryDashboard() {
         fetchOrders();
     }, [tab]);
 
-    const renderOrder = ({ item }: { item: any }) => (
-        <TouchableOpacity
-            style={styles.card}
-            onPress={() => router.push(`/delivery/${item.id}`)}
-            activeOpacity={0.85}
-        >
-            <View style={[styles.cardHeader, tab === 'active' && styles.cardHeaderActive]}>
-                <View style={styles.notifBadge}>
-                    <Ionicons
-                        name={tab === 'available' ? "notifications" : "cube"}
-                        size={18}
-                        color={tab === 'available' ? "#8B0000" : "#fff"}
-                    />
-                    <Text style={[styles.notifBadgeText, tab === 'active' && { color: '#fff' }]}>
-                        {tab === 'available' ? 'Available' : 'My Task'}
-                    </Text>
+    const renderOrder = ({ item }: { item: any }) => {
+        const isAvailable = tab === 'available';
+        return (
+            <TouchableOpacity
+                style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}
+                onPress={() => router.push(`/delivery/${item.id}`)}
+                activeOpacity={0.7}
+            >
+                <View style={styles.cardHeader}>
+                    <View>
+                        <Text style={[styles.orderId, { color: theme.text }]}>Order #{item.id.substring(0, 8).toUpperCase()}</Text>
+                        <Text style={[styles.cardDate, { color: theme.subtext }]}>{new Date(item.created_at).toLocaleString()}</Text>
+                    </View>
+                    <View style={[styles.pricePill, { backgroundColor: theme.headerBg }]}>
+                        <Text style={[styles.priceText, { color: theme.primary }]}>{formatCurrency(item.total_amount)}</Text>
+                    </View>
                 </View>
-                <Text style={[styles.cardDate, tab === 'active' && { color: '#fff' }]}>
-                    {new Date(item.created_at).toLocaleDateString()}
-                </Text>
-            </View>
 
-            <View style={styles.cardBody}>
-                <View style={styles.infoRow}>
-                    <Ionicons name="cube-outline" size={16} color="#FFCCCC" />
-                    <Text style={styles.infoText}>Items: <Text style={styles.infoValue}>{item.total_items ?? '—'}</Text></Text>
-                </View>
-                <View style={styles.infoRow}>
-                    <Ionicons name="location-outline" size={16} color="#FFCCCC" />
-                    <Text style={styles.infoText} numberOfLines={1}>
-                        {item.shipping_address || 'Address not provided'}
-                    </Text>
-                </View>
-                <View style={styles.infoRow}>
-                    <Ionicons name="person-outline" size={16} color="#FFCCCC" />
-                    <Text style={styles.infoText}>{item.user_profiles?.full_name || 'Customer'}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                    <Ionicons name="cash-outline" size={16} color="#FFCCCC" />
-                    <Text style={styles.infoText}>{item.total_amount?.toLocaleString()} FCFA</Text>
-                </View>
-            </View>
+                <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-            <View style={styles.cardFooter}>
-                <Text style={styles.tapHint}>Tap to view details →</Text>
-            </View>
-        </TouchableOpacity>
-    );
+                <View style={styles.routeContainer}>
+                    {/* Route Timeline Graphics */}
+                    <View style={styles.routeGraphics}>
+                        <View style={[styles.routeDot, { backgroundColor: theme.primary }]} />
+                        <View style={[styles.routeLine, { backgroundColor: theme.routeLine }]} />
+                        <View style={[styles.routeDot, { backgroundColor: theme.accent, borderColor: theme.card, borderWidth: 2 }]} />
+                    </View>
+
+                    {/* Route Info */}
+                    <View style={styles.routeInfo}>
+                        <View style={styles.routeLocation}>
+                            <Text style={[styles.locationTitle, { color: theme.subtext }]}>Pickup</Text>
+                            <Text style={[styles.locationDetails, { color: theme.text }]}>AutoParts Store</Text>
+                        </View>
+
+                        <View style={styles.routeSpacer} />
+
+                        <View style={styles.routeLocation}>
+                            <Text style={[styles.locationTitle, { color: theme.subtext }]}>Drop-off</Text>
+                            <Text style={[styles.locationDetails, { color: theme.text }]} numberOfLines={2}>
+                                {item.shipping_address || 'Customer Address'}
+                            </Text>
+                            <Text style={[styles.customerName, { color: theme.subtext }]}>
+                                {item.user_profiles?.full_name || 'Customer'} • {item.total_items} items
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+
+                <View style={[styles.actionRow, { borderTopColor: theme.border }]}>
+                    <Text style={[styles.actionText, { color: isAvailable ? theme.primary : '#4caf50' }]}>
+                        {isAvailable ? "Review & Accept" : "View Active Delivery"}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={16} color={isAvailable ? theme.primary : '#4caf50'} />
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" />
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+            <StatusBar barStyle="light-content" backgroundColor={theme.bg} />
 
             {/* Header */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.headerTitle}>Deliveries</Text>
-                    <Text style={styles.headerSubtitle}>Welcome, {profile?.full_name || 'Driver'}</Text>
+                    <Text style={[styles.headerSubtitle, { color: theme.subtext }]}>Driver Portal</Text>
+                    <Text style={[styles.headerTitle, { color: theme.text }]}>Hello, {profile?.full_name?.split(' ')[0] || 'Driver'}</Text>
                 </View>
-                <TouchableOpacity onPress={signOut} style={styles.signOutBtn}>
-                    <Ionicons name="log-out-outline" size={24} color="#FFD700" />
+                <TouchableOpacity onPress={signOut} style={[styles.signOutBtn, { backgroundColor: theme.headerBg, borderColor: theme.border }]}>
+                    <Ionicons name="log-out-outline" size={22} color={theme.primary} />
                 </TouchableOpacity>
             </View>
 
-            {/* Tabs */}
-            <View style={styles.tabBar}>
-                <TouchableOpacity
-                    style={[styles.tab, tab === 'available' && styles.tabActive]}
-                    onPress={() => setTab('available')}
-                >
-                    <Text style={[styles.tabText, tab === 'available' && styles.tabTextActive]}>Available</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, tab === 'active' && styles.tabActive]}
-                    onPress={() => setTab('active')}
-                >
-                    <Text style={[styles.tabText, tab === 'active' && styles.tabTextActive]}>My Active</Text>
-                </TouchableOpacity>
+            {/* SaaS Segmented Tabs */}
+            <View style={styles.tabContainer}>
+                <View style={[styles.tabBackground, { backgroundColor: theme.headerBg }]}>
+                    <TouchableOpacity
+                        style={[styles.tab, tab === 'available' && [styles.tabActive, { backgroundColor: theme.primary }]]}
+                        onPress={() => setTab('available')}
+                    >
+                        <Text style={[styles.tabText, tab === 'available' ? { color: '#8B0000' } : { color: theme.text }]}>Available</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.tab, tab === 'active' && [styles.tabActive, { backgroundColor: theme.primary }]]}
+                        onPress={() => setTab('active')}
+                    >
+                        <Text style={[styles.tabText, tab === 'active' ? { color: '#8B0000' } : { color: theme.text }]}>My Active</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
+
             <FlatList
                 data={orders}
                 renderItem={renderOrder}
                 keyExtractor={(item) => item.id}
-                refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchOrders} tintColor="#FFD700" />}
+                refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchOrders} tintColor={theme.primary} />}
                 contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
                 ListEmptyComponent={
                     <View style={styles.emptyContainer}>
-                        <Ionicons name={tab === 'available' ? "checkmark-circle-outline" : "bicycle-outline"} size={64} color="#FFCCCC" />
-                        <Text style={styles.emptyText}>
-                            {tab === 'available' ? 'No new orders' : 'You have no active tasks'}
+                        <View style={[styles.emptyIconBox, { backgroundColor: theme.headerBg }]}>
+                            <Ionicons name={tab === 'available' ? "checkmark-circle-outline" : "bicycle-outline"} size={48} color={theme.primary} />
+                        </View>
+                        <Text style={[styles.emptyText, { color: theme.text }]}>
+                            {tab === 'available' ? 'You are all caught up!' : 'No active deliveries'}
                         </Text>
-                        <Text style={styles.emptySubtext}>Pull to refresh</Text>
+                        <Text style={[styles.emptySubtext, { color: theme.subtext }]}>
+                            {tab === 'available' ? 'More orders will appear when they are ready.' : 'Accept an available order to start.'}
+                        </Text>
                     </View>
                 }
             />
@@ -179,64 +214,69 @@ export default function DeliveryDashboard() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#8B0000' },
+    container: { flex: 1 },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-end',
         paddingHorizontal: 20,
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#c13030',
-        backgroundColor: '#6b0000',
+        paddingTop: 10,
+        paddingBottom: 20,
     },
-    headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff' },
-    headerSubtitle: { fontSize: 14, color: '#FFCCCC', marginTop: 2 },
-    signOutBtn: { padding: 8 },
+    headerSubtitle: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
+    headerTitle: { fontSize: 30, fontWeight: '900', letterSpacing: -0.5 },
+    signOutBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', borderWidth: 1, elevation: 2 },
 
-    tabBar: { flexDirection: 'row', backgroundColor: '#6b0000', padding: 12, gap: 12 },
-    tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 10, backgroundColor: '#8B0000' },
-    tabActive: { backgroundColor: '#FFD700' },
-    tabText: { color: '#FFCCCC', fontWeight: '700', fontSize: 14 },
-    tabTextActive: { color: '#8B0000' },
+    tabContainer: { paddingHorizontal: 16, paddingBottom: 10 },
+    tabBackground: { flexDirection: 'row', borderRadius: 30, padding: 4 },
+    tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 26 },
+    tabActive: { elevation: 3 },
+    tabText: { fontWeight: '800', fontSize: 14 },
 
     card: {
-        backgroundColor: '#fff',
-        borderRadius: 16,
+        borderRadius: 20,
         marginBottom: 16,
-        overflow: 'hidden',
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
+        borderWidth: 1,
+        elevation: 3,
     },
     cardHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        padding: 16,
+    },
+    orderId: { fontSize: 16, fontWeight: '900', marginBottom: 4 },
+    cardDate: { fontSize: 12, fontWeight: '500' },
+    pricePill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
+    priceText: { fontWeight: '800', fontSize: 14 },
+
+    divider: { height: 1, marginHorizontal: 16, opacity: 0.5 },
+
+    routeContainer: { flexDirection: 'row', padding: 16 },
+    routeGraphics: { width: 24, alignItems: 'center', marginRight: 12, marginTop: 4 },
+    routeDot: { width: 12, height: 12, borderRadius: 6 },
+    routeLine: { width: 2, flex: 1, marginVertical: 4 },
+
+    routeInfo: { flex: 1 },
+    routeLocation: { justifyContent: 'center' },
+    locationTitle: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+    locationDetails: { fontSize: 15, fontWeight: '700', lineHeight: 22 },
+    customerName: { fontSize: 13, fontWeight: '500', marginTop: 4 },
+
+    routeSpacer: { height: 20 },
+
+    actionRow: {
+        flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        backgroundColor: '#FFD700',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderTopWidth: 1,
+        gap: 8,
     },
-    cardHeaderActive: { backgroundColor: '#4caf50' },
-    notifBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    notifBadgeText: { fontWeight: '700', color: '#8B0000', fontSize: 14 },
-    cardDate: { fontSize: 12, color: '#6b0000', fontWeight: '600' },
+    actionText: { fontSize: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
 
-    cardBody: { padding: 14, gap: 8 },
-    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#a11212', padding: 8, borderRadius: 8 },
-    infoText: { color: '#FFCCCC', fontSize: 13 },
-    infoValue: { color: '#fff', fontWeight: 'bold' },
-
-    cardFooter: {
-        backgroundColor: '#8B0000',
-        padding: 10,
-        alignItems: 'flex-end',
-    },
-    tapHint: { color: '#FFCCCC', fontSize: 12, fontStyle: 'italic' },
-
-    emptyContainer: { alignItems: 'center', marginTop: 80 },
-    emptyText: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: 16 },
-    emptySubtext: { color: '#FFCCCC', fontSize: 14, marginTop: 6 },
+    emptyContainer: { alignItems: 'center', marginTop: 60, paddingHorizontal: 30 },
+    emptyIconBox: { width: 90, height: 90, borderRadius: 45, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
+    emptyText: { fontSize: 20, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
+    emptySubtext: { fontSize: 14, fontWeight: '500', textAlign: 'center', lineHeight: 22 },
 });

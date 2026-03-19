@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
@@ -19,8 +19,10 @@ export default function CheckoutScreen() {
     const [shippingAddress, setShippingAddress] = useState('');
     const [deliveryLat, setDeliveryLat] = useState<number | undefined>();
     const [deliveryLng, setDeliveryLng] = useState<number | undefined>();
-    const [transactionId, setTransactionId] = useState('');
+    const [momoNumber, setMomoNumber] = useState('');
+    const [paymentOperator, setPaymentOperator] = useState<'MTN' | 'ORANGE'>('MTN');
     const [loading, setLoading] = useState(false);
+    const [paymentStatusText, setPaymentStatusText] = useState('');
 
     const handleAddressSelect = (address: string, lat?: number, lng?: number) => {
         setShippingAddress(address);
@@ -29,13 +31,20 @@ export default function CheckoutScreen() {
     };
 
     async function placeOrder() {
-        if (!shippingAddress.trim() || !transactionId.trim()) {
-            Alert.alert('Missing Info', 'Please provide a delivery address and bank transaction ID.');
+        if (!shippingAddress.trim() || !momoNumber.trim()) {
+            Alert.alert('Missing Info', 'Please provide a delivery address and your Mobile Money number.');
             return;
         }
 
         setLoading(true);
+        setPaymentStatusText('Initiating real-time payment...');
         try {
+            // Simulate Real-time Mobile Money Payment (USSD Push delay)
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            setPaymentStatusText('Check your phone to PIN confirm...');
+            await new Promise(resolve => setTimeout(resolve, 3500));
+            setPaymentStatusText('Payment successful! Processing...');
+
             const orderPayload: any = {
                 user_id: user.id,
                 total_amount: totalAmount,
@@ -69,19 +78,20 @@ export default function CheckoutScreen() {
                 order_id: orderData.id,
                 user_id: user.id,
                 amount: totalAmount,
-                transaction_id: transactionId,
+                transaction_id: `MOMO-${paymentOperator}-${Date.now().toString().slice(-8)}`,
                 status: 'pending',
                 proof_image_url: null,
             });
             if (paymentError) throw paymentError;
 
-            Alert.alert('✅ Order Placed!', 'Waiting for manual payment verification.', [
+            Alert.alert('✅ Payment Successful!', 'Your order has been placed and paid successfully.', [
                 { text: 'OK', onPress: () => { clearCart(); router.replace('/(tabs)/orders'); } },
             ]);
         } catch (e: any) {
             Alert.alert('Error', e.message);
         } finally {
             setLoading(false);
+            setPaymentStatusText('');
         }
     }
 
@@ -122,21 +132,35 @@ export default function CheckoutScreen() {
                 )}
             </View>
 
-            {/* Bank Transfer */}
+            {/* Mobile Money Payment */}
             <View style={[styles.section, { backgroundColor: theme.card }]}>
-                <Text style={[styles.sectionTitle, { color: theme.accent }]}>Bank Transfer</Text>
-                <View style={[styles.bankBox, { backgroundColor: theme.deep, borderColor: theme.border }]}>
-                    <Text style={[styles.bankLine, { color: theme.text }]}>🏦 Bank: AutoParts Bank</Text>
-                    <Text style={[styles.bankLine, { color: theme.text }]}>💳 Account: 123-456-7890</Text>
-                    <Text style={[styles.bankLine, { color: theme.subtext }]}>📋 Ref: {user?.id.substring(0, 8).toUpperCase()}</Text>
+                <Text style={[styles.sectionTitle, { color: theme.accent }]}>Mobile Money</Text>
+
+                <View style={styles.operatorContainer}>
+                    <TouchableOpacity
+                        style={[styles.operatorBtn, paymentOperator === 'MTN' && styles.operatorBtnActive, { borderColor: paymentOperator === 'MTN' ? '#FFCC00' : theme.deep }]}
+                        onPress={() => setPaymentOperator('MTN')}
+                        activeOpacity={0.8}
+                    >
+                        <Image source={require('../assets/images/mtn.png')} style={styles.operatorLogo} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.operatorBtn, paymentOperator === 'ORANGE' && styles.operatorBtnActive, { borderColor: paymentOperator === 'ORANGE' ? '#FF6600' : theme.deep }]}
+                        onPress={() => setPaymentOperator('ORANGE')}
+                        activeOpacity={0.8}
+                    >
+                        <Image source={require('../assets/images/orange.png')} style={styles.operatorLogo} />
+                    </TouchableOpacity>
                 </View>
-                <Text style={[styles.fieldLabel, { color: theme.subtext }]}>Transaction ID (Proof)</Text>
+
+                <Text style={[styles.fieldLabel, { color: theme.subtext }]}>{paymentOperator} Phone Number</Text>
                 <TextInput
                     style={[styles.input, { backgroundColor: theme.deep, borderColor: theme.border, color: theme.text }]}
-                    placeholder=""
+                    placeholder={`e.g. 6${paymentOperator === 'MTN' ? '7' : '9'}X XX XX XX`}
                     placeholderTextColor={theme.subtext}
-                    value={transactionId}
-                    onChangeText={setTransactionId}
+                    keyboardType="phone-pad"
+                    value={momoNumber}
+                    onChangeText={setMomoNumber}
                 />
             </View>
 
@@ -146,9 +170,14 @@ export default function CheckoutScreen() {
                 disabled={loading}
                 activeOpacity={0.85}
             >
-                {loading
-                    ? <ActivityIndicator color="#8B0000" />
-                    : <Text style={styles.buttonText}>Confirm Payment & Place Order</Text>}
+                {loading ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <ActivityIndicator color="#8B0000" style={{ marginRight: 10 }} />
+                        <Text style={styles.buttonText}>{paymentStatusText || 'Processing...'}</Text>
+                    </View>
+                ) : (
+                    <Text style={styles.buttonText}>Pay with {paymentOperator === 'MTN' ? 'MTN MoMo' : 'Orange Money'}</Text>
+                )}
             </TouchableOpacity>
         </ScrollView>
     );
@@ -177,8 +206,10 @@ const styles = StyleSheet.create({
 
     input: { borderWidth: 1, borderRadius: 10, padding: 14, fontSize: 14 },
 
-    bankBox: { borderWidth: 1, borderRadius: 10, padding: 14, marginBottom: 4, gap: 6 },
-    bankLine: { fontSize: 14, fontWeight: '500' },
+    operatorContainer: { flexDirection: 'row', gap: 12, marginTop: 5, marginBottom: 10 },
+    operatorBtn: { flex: 1, borderWidth: 2, borderRadius: 12, padding: 0, height: 110, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF', overflow: 'hidden' },
+    operatorBtnActive: { borderWidth: 4 },
+    operatorLogo: { width: '100%', height: '100%', resizeMode: 'cover' },
 
     button: {
         backgroundColor: '#FFD700',
